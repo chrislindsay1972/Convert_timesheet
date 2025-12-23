@@ -59,8 +59,10 @@ if(OPENAI_API_KEY == null || OPENAI_API_KEY.trim() == "")
 MODEL = zoho.crm.getOrgVariable("OPENAI_RESPONSES_MODEL");
 if(MODEL == null || MODEL.trim() == "")
 {
-	MODEL = "ft:gpt-4.1-mini-2025-04-14:personal:rpa-v6-general:ClZZ2K2m";
-	//MODEL = "gpt-4.1-mini";
+	// Try base model first - detailed instructions may be sufficient
+	MODEL = "gpt-4.1-mini";
+	// Fine-tuned model (use if base model struggles):
+	//MODEL = "ft:gpt-4.1-mini-2025-04-14:personal:rpa-v6-general:ClZZ2K2m";
 }
 info "Using model: " + MODEL;
 // =========================================
