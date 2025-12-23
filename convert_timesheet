@@ -1,0 +1,1081 @@
+void automation.Timesheet_excel_translation(String file_name,String public_download_url,String source_file_id)
+{
+out = Map();
+out.put("status","ERROR");
+out.put("message","Uninitialized.");
+info "=== Start Timesheet_excel_translation ===";
+// Target WorkDrive folder for output CSVs
+TARGET_WORKDRIVE_FOLDER_ID = "7812m0b9bcf5080f24c228adc5c9c0eb4807d";
+// -----------------------------------------
+// File name & extension
+// -----------------------------------------
+if(file_name == null || file_name.trim() == "")
+{
+	file_name = "document.pdf";
+}
+info "Preferred file name: " + file_name;
+ext = "";
+dotpos = file_name.lastIndexOf(".");
+if(dotpos != -1 && dotpos < file_name.length() - 1)
+{
+	ext = file_name.substring(dotpos + 1).toLowerCase();
+}
+info "Detected file extension: " + ext;
+if(source_file_id == null)
+{
+	source_file_id = "";
+}
+info "WorkDrive source_file_id: " + source_file_id;
+if(source_file_id.trim() == "")
+{
+	info "ERROR: No WorkDrive file id provided.";
+	out.put("status","ERROR");
+	out.put("message","No WorkDrive file id provided.");
+	info out;
+	return;
+}
+// -----------------------------------------
+// Supported extensions
+// -----------------------------------------
+if(ext != "csv" && ext != "pdf")
+{
+	info "ERROR: Unsupported extension for this function: " + ext;
+	out.put("status","ERROR");
+	out.put("message","Only CSV and PDF files are supported by Timesheet_excel_translation.");
+	info out;
+	return;
+}
+// -----------------------------------------
+// OpenAI config
+// -----------------------------------------
+OPENAI_API_KEY = zoho.crm.getOrgVariable("OPENAI_API_KEY");
+if(OPENAI_API_KEY == null || OPENAI_API_KEY.trim() == "")
+{
+	info "OPENAI_API_KEY org variable is missing.";
+	out.put("message","OPENAI_API_KEY not configured.");
+	info out;
+	return;
+}
+MODEL = zoho.crm.getOrgVariable("OPENAI_RESPONSES_MODEL");
+if(MODEL == null || MODEL.trim() == "")
+{
+	MODEL = "ft:gpt-4.1-mini-2025-04-14:personal:rpa-v6-general:ClZZ2K2m";
+	//MODEL = "gpt-4.1-mini";
+}
+info "Using model: " + MODEL;
+// =========================================
+// STEP 1: DOWNLOAD FILE (Public link logic first)
+// =========================================
+raw_download = null;
+is_workdrive_error = false;
+workdrive_err_msg = "";
+// ---------- 1A: Try public_download_url route ----------
+if(public_download_url == null)
+{
+	public_download_url = "";
+}
+link_in = public_download_url.toString().trim();
+if(link_in != "")
+{
+	info "Using public link route to download WorkDrive file.";
+	fname = file_name;
+	if(fname == null || fname.trim() == "")
+	{
+		fname = "file";
+	}
+	fname = fname.trim();
+	fname = fname.replaceAll("[^-A-Za-z0-9._@()+ ]"," ");
+	fname = fname.replaceAll("_","_");
+	fname = fname.replaceAll("[. ]$","");
+	if(fname == "")
+	{
+		fname = "file";
+	}
+	safe_name = fname;
+	info "SafeName=" + safe_name;
+	enc_url = encodeUrl(link_in);
+	if(enc_url == null || enc_url == "")
+	{
+		enc_url = "x";
+	}
+	enc_url = enc_url.replaceAll("\\+"," ");
+	resolve_url = "https://www.zohoapis.eu/workdrive/api/v1/public/links?url=" + enc_url;
+	if(resolve_url == null || resolve_url.trim() == "")
+	{
+		resolve_url = "https://www.zohoapis.eu/workdrive/api/v1/public/links?url=x";
+	}
+	info "GET " + resolve_url;
+	wd_pub = null;
+	try 
+	{
+		wd_pub = invokeurl
+		[
+			url :resolve_url
+			type :GET
+		];
+	}
+	catch (e_res)
+	{
+		info "Public links resolve exception: " + e_res;
+	}
+	download_url = "https://example.com";
+	if(wd_pub != null)
+	{
+		if(wd_pub.containsKey("data"))
+		{
+			d = wd_pub.get("data");
+			if(d != null && d.containsKey("attributes"))
+			{
+				a = d.get("attributes");
+				if(a != null && a.containsKey("download_url"))
+				{
+					download_url = a.get("download_url").toString();
+				}
+				else if(a != null && a.containsKey("url"))
+				{
+					download_url = a.get("url").toString();
+				}
+			}
+			else if(d != null && d.containsKey("download_url"))
+			{
+				download_url = d.get("download_url").toString();
+			}
+		}
+		else if(wd_pub.containsKey("download_url"))
+		{
+			download_url = wd_pub.get("download_url").toString();
+		}
+		// NEW: use original WorkDrive name for output
+		if(wd_pub.containsKey("link_name") && wd_pub.get("link_name") != null)
+		{
+			orig_name = wd_pub.get("link_name").toString();
+			if(orig_name != null && orig_name.trim() != "")
+			{
+				file_name = orig_name.trim();
+				info "Overriding file_name from public link_name: " + file_name;
+				ext = "";
+				dotpos = file_name.lastIndexOf(".");
+				if(dotpos != -1 && dotpos < file_name.length() - 1)
+				{
+					ext = file_name.substring(dotpos + 1).toLowerCase();
+				}
+				info "Detected file extension (from link_name): " + ext;
+			}
+		}
+	}
+	if(download_url == null || download_url.trim() == "" || download_url == "https://example.com")
+	{
+		if(link_in == "")
+		{
+			info "Public link is blank; skipping public route.";
+		}
+		else
+		{
+			if(link_in.indexOf("?") == -1)
+			{
+				download_url = link_in + "?download=1";
+			}
+			else
+			{
+				download_url = link_in + "&download=1";
+			}
+		}
+	}
+	if(download_url != null && download_url.trim() != "")
+	{
+		if(download_url.indexOf("?") == -1)
+		{
+			download_url = download_url + "?directDownload=true";
+		}
+		else
+		{
+			download_url = download_url + "&directDownload=true";
+		}
+		info "GET " + download_url;
+		try 
+		{
+			file_content = invokeurl
+			[
+				url :download_url
+				type :GET
+			];
+			if(file_content != null)
+			{
+				raw_download = file_content;
+				info "Public download completed successfully (bytes present).";
+			}
+			else
+			{
+				info "Public download returned null bytes; will try WorkDrive /content.";
+			}
+		}
+		catch (e_pubdl)
+		{
+			info "Public download exception: " + e_pubdl;
+		}
+	}
+}
+// ---------- 1B: Fallback to WorkDrive /content ----------
+if(raw_download == null)
+{
+	info "Public route did not yield file bytes; falling back to WorkDrive /content via zoho_drive.";
+	try 
+	{
+		raw_download = invokeurl
+		[
+			url :"https://workdrive.zoho.eu/api/v1/files/" + source_file_id + "/content"
+			type :GET
+			connection:"zoho_drive"
+		];
+		info "WorkDrive /content download complete.";
+	}
+	catch (eC2)
+	{
+		info "Content endpoint exception (fallback): " + eC2;
+	}
+}
+if(raw_download == null)
+{
+	info "ERROR: Could not download file bytes from either public link or WorkDrive /content.";
+	out.put("status","ERROR");
+	out.put("message","Could not download file bytes from WorkDrive.");
+	info out;
+	return;
+}
+// =========================================
+// STEP 2: INSPECT DOWNLOADED CONTENT
+// =========================================
+txtpeek = "";
+try 
+{
+	txtpeek = raw_download.toString();
+}
+catch (ePeek)
+{
+	txtpeek = "";
+}
+// Check for JSON WorkDrive error
+if(txtpeek != null && txtpeek != "" && txtpeek.trim().startsWith("{"))
+{
+	info "Downloaded body looks like JSON; checking for WorkDrive 'errors' array...";
+	try 
+	{
+		json_map = txtpeek.toMap();
+		if(json_map.containsKey("errors"))
+		{
+			errs = json_map.get("errors");
+			err_title = "";
+			err_id = "";
+			for each  e_item in errs
+			{
+				if(e_item.containsKey("title") && e_item.get("title") != null)
+				{
+					err_title = e_item.get("title").toString();
+				}
+				if(e_item.containsKey("id") && e_item.get("id") != null)
+				{
+					err_id = e_item.get("id").toString();
+				}
+				break;
+			}
+			workdrive_err_msg = "WorkDrive download error";
+			if(err_id != "")
+			{
+				workdrive_err_msg = workdrive_err_msg + " (" + err_id + ")";
+			}
+			if(err_title != "")
+			{
+				workdrive_err_msg = workdrive_err_msg + ": " + err_title;
+			}
+			info "ERROR: " + workdrive_err_msg;
+			out.put("status","ERROR");
+			out.put("message",workdrive_err_msg);
+			info out;
+			return;
+		}
+	}
+	catch (e_json)
+	{
+		// Not valid JSON, continue
+	}
+}
+// Check for HTML viewer page (for CSV)
+if(ext == "csv" && txtpeek != null && txtpeek != "")
+{
+	head = txtpeek;
+	if(head.length() > 200)
+	{
+		head = head.substring(0,200);
+	}
+	low = head.toLowerCase();
+	if(low.startsWith("<!doctype") || low.startsWith("<html"))
+	{
+		info "ERROR: Downloaded CSV is actually HTML (likely viewer page).";
+		out.put("status","ERROR");
+		out.put("message","Downloaded CSV appears to be HTML (viewer page). Check the WorkDrive public link/sharing.");
+		info out;
+		return;
+	}
+}
+// Check PDF content looks valid PDF (avoid HTML/JSON AND non-PDF bytes)
+if(ext == "pdf" && txtpeek != null && txtpeek != "")
+{
+	head2 = txtpeek.toString();
+	if(head2 != null)
+	{
+		if(head2.length() > 200)
+		{
+			head2 = head2.substring(0,200);
+		}
+		low2 = head2.toLowerCase();
+		if(low2.startsWith("<!doctype") || low2.startsWith("<html") || low2.startsWith("{") || low2.startsWith("["))
+		{
+			info "ERROR: Downloaded PDF appears to be HTML/JSON instead of binary PDF.";
+			out.put("status","ERROR");
+			out.put("message","Downloaded PDF appears to be HTML/JSON, not a real PDF file.");
+			info out;
+			return;
+		}
+		// ===== NEW: if it doesn't contain a %PDF header, treat as CSV instead =====
+		pdf_marker_index = low2.indexOf("%pdf-");
+		if(pdf_marker_index == -1)
+		{
+			info "WARNING: File extension is 'pdf' but content does not contain %PDF header; treating as CSV instead.";
+			ext = "csv";
+		}
+	}
+}
+// Prepare content by extension
+csv_input_text = "";
+b64 = "";
+ct = "application/octet-stream";
+if(ext == "csv")
+{
+	ct = "text/plain";
+	csv_input_text = if(txtpeek == null,"",txtpeek);
+	info "CSV text extracted (length=" + csv_input_text.length() + ").";
+	if(csv_input_text.length() > 400)
+	{
+		info "CSV preview (first up to 400 chars): " + csv_input_text.substring(0,400);
+	}
+	else
+	{
+		info "CSV preview (full): " + csv_input_text;
+	}
+	if(csv_input_text == "")
+	{
+		info "ERROR: CSV input is empty.";
+		out.put("status","ERROR");
+		out.put("message","Downloaded CSV is empty.");
+		info out;
+		return;
+	}
+}
+else if(ext == "pdf")
+{
+	ct = "application/pdf";
+	b64 = zoho.encryption.base64Encode(raw_download);
+	if(b64 == null)
+	{
+		b64 = "";
+	}
+	if(b64 == "")
+	{
+		info "ERROR: Base64 encoding of PDF failed.";
+		out.put("status","ERROR");
+		out.put("message","Base64 encoding of PDF failed.");
+		info out;
+		return;
+	}
+	info "PDF base64 length (chars): " + b64.length();
+}
+instructions = "You are an AI that converts a timesheet CSV file into a structured CSV table for payroll.\n" + "You must ONLY use values that appear in the CSV columns. Do NOT invent any numbers or components.\n" + "\n" + "GOAL\n" + "- Process the input CSV row by row.\n" + "- For each valid timesheet row, build a set of payroll lines for real, non-zero components that have their own columns: standard hours, overtime bands, and expenses.\n" + "- First remove all zero-valued components. Then create expenses lines. Then create standard and overtime hours lines.\n" + "- Each output line represents exactly one component.\n" + "- Do NOT group, merge or cross-reference different rows. Treat every row independently.\n" + "\n" + "VALID DETAIL ROWS\n" + "- Only process a row as a detail row if ALL of the following are true:\n" + "  1) Candidate RefNo is not empty.\n" + "  2) Candidate Forename is not empty.\n" + "  3) Candidate Surname is not empty.\n" + "  4) The Weekending column for that row is present and not empty.\n" + "- Ignore all other rows (blank rows, totals, summary lines, headers, footers).\n" + "- Treat every valid row independently. Do not merge or group rows.\n" + "\n" + "OUTPUT FORMAT\n" + "- Output plain CSV text, DATA ROWS ONLY (no header row).\n" + "- Each output row must have exactly 8 comma-separated values in this order:\n" + "  employeeid,firstname,surname,description,amount,rate,weekending,unit\n" + "- Never output any lines starting with ERROR.\n" + "- Never output comments, explanations or blank lines.\n" + "\n" + "COMMON FIELD MAPPING\n" + "- employeeid  = value from Candidate RefNo.\n" + "- firstname   = value from Candidate Forename.\n" + "- surname     = value from Candidate Surname.\n" + "- client name = value from Client Name.\n" + "- job title   = value from Contract JobTitle.\n" + "- weekending  = value from the Weekending column on that row, converted from DD/MM/YYYY or DD/MM/YY into YYYY-MM-DD.\n" + "\n" + "NUMERIC HANDLING\n" + "- For any numeric column (hours, rates, expenses):\n" + "  - Treat empty cells as 0.\n" + "  - Remove thousands separators. For example, 1,088.72 becomes 1088.72.\n" + "  - Keep positive and negative signs as they appear.\n" + "\n" + "IDENTIFYING COMPONENT COLUMNS\n" + "- Standard hours column (std_hours_col): name contains Std Hrs or Std HRs (case-insensitive).\n" + "- Standard rate column (std_rate_col): name contains Std Rate. If none, use a column named exactly Rate or one whose name contains Std Hrs.1.\n" + "- OT1 hours column: name contains OT1 Hrs or OT1 HRs.\n" + "- OT1 rate column: name contains OT1 Rate.\n" + "- OT2 hours column: name contains OT2 Hrs or OT2 HRs.\n" + "- OT2 rate column: name contains OT2 Rate.\n" + "- OT3 hours column: name contains OT3 Hrs or OT3 HRs.\n" + "- OT3 rate column: name contains OT3 Rate.\n" + "- Expenses column: name contains Expenses.\n" + "- If a component hours or rate column does NOT exist in the header, treat that component as always zero and never output any line for it.\n" + "\n" + "ROW PROCESSING PIPELINE (APPLY IN THIS ORDER FOR EACH VALID ROW)\n" + "\n" + "STEP 1: READ AND CLEAN VALUES\n" + "- Read these raw values from the row (using the column names or patterns above):\n" + "  std_hours, std_rate,\n" + "  ot1_hours, ot1_rate,\n" + "  ot2_hours, ot2_rate,\n" + "  ot3_hours, ot3_rate,\n" + "  expenses_value,\n" + "  net_pay_value (if a Net pay or Net Pay column exists).\n" + "- Convert them to numbers using the numeric handling rules.\n" + "- After conversion, any missing component should be treated as 0.\n" + "\n" + "STEP 2: REMOVE ZERO COMPONENTS\n" + "- Conceptually remove all components where the numeric value is zero:\n" + "  - If std_hours is 0, do not create a standard-hours line.\n" + "  - If ot1_hours is 0, do not create an OT1 line.\n" + "  - If ot2_hours is 0, do not create an OT2 line.\n" + "  - If ot3_hours is 0, do not create an OT3 line.\n" + "  - If expenses_value is 0, do not create an expenses line.\n" + "- Do not output any line whose amount is 0 or rate is 0.\n" + "- In particular, if Expenses is blank or zero in the input, you MUST NOT output any expenses line for that row.\n" + "\n" + "STEP 3: CREATE EXPENSES LINE FIRST\n" + "- After removing zeros, handle the expenses component before any hours components.\n" + "- Only if an Expenses column exists AND expenses_value is non-zero:\n" + "  - You MUST output exactly one expenses line for this row.\n" + "  - This is mandatory whenever expenses_value is non-zero.\n" + "  - The expenses line must be:\n" + "      description = Expenses - {Client Name} - {Contract JobTitle}\n" + "      amount      = 1\n" + "      rate        = expenses_value\n" + "      unit        = expense\n" + "- Do NOT combine expenses with any hours-based component in the same line.\n" + "- Do NOT change the expenses_value number. Use it exactly as in the CSV (after numeric cleaning).\n" + "- If the Expenses cell is empty or zero, do not output any expenses line at all for that row.\n" + "\n" + "STEP 4: CREATE STANDARD AND OVERTIME LINES\n" + "- After creating the expenses line (if any), create lines for non-zero hours components in this order: Std Hrs, OT1 Hrs, OT2 Hrs, OT3 Hrs.\n" + "\n" + "4A) STANDARD HOURS\n" + "- If std_hours is non-zero AND std_rate is non-zero:\n" + "  - Output exactly one standard-hours line:\n" + "      description = Std Hrs - {Client Name} - {Contract JobTitle}\n" + "      amount      = std_hours\n" + "      rate        = std_rate\n" + "      unit        = hours\n" + "- Do not create a standard-hours line if std_hours is 0 or std_rate is 0.\n" + "\n" + "4B) OVERTIME 1\n" + "- If an OT1 hours column and an OT1 rate column both exist:\n" + "  - If ot1_hours is non-zero AND ot1_rate is non-zero:\n" + "      description = OT1 Hrs - {Client Name} - {Contract JobTitle}\n" + "      amount      = ot1_hours\n" + "      rate        = ot1_rate\n" + "      unit        = hours\n" + "- Otherwise, do not output an OT1 line.\n" + "\n" + "4C) OVERTIME 2\n" + "- If an OT2 hours column and an OT2 rate column both exist:\n" + "  - If ot2_hours is non-zero AND ot2_rate is non-zero:\n" + "      description = OT2 Hrs - {Client Name} - {Contract JobTitle}\n" + "      amount      = ot2_hours\n" + "      rate        = ot2_rate\n" + "      unit        = hours\n" + "- Otherwise, do not output an OT2 line.\n" + "\n" + "4D) OVERTIME 3\n" + "- If an OT3 hours column and an OT3 rate column both exist:\n" + "  - If ot3_hours is non-zero AND ot3_rate is non-zero:\n" + "      description = OT3 Hrs - {Client Name} - {Contract JobTitle}\n" + "      amount      = ot3_hours\n" + "      rate        = ot3_rate\n" + "      unit        = hours\n" + "- Otherwise, do not output an OT3 line.\n" + "\n" + "STEP 5: VALIDATE EACH OUTPUT LINE\n" + "- After constructing each line, perform a final validation:\n" + "  - Do not output any OT1, OT2, or OT3 line if the corresponding hours are zero in the source row.\n" + "  - Do not output an Expenses line if the source Expenses value is zero.\n" + "  - For all lines, verify that amount × rate ≈ total with a tolerance of ±0.05.\n" + "- Exclude any line that fails validation.\n" + "\n" + "ONE COMPONENT PER LINE\n" + "- Each output line must represent exactly one component.\n" + "- Never mix hours from different components in the same line.\n" + "- Never reuse a rate from one component for a different component.\n" + "- Valid description prefixes are only:\n" + "  Std Hrs -\n" + "  OT1 Hrs -\n" + "  OT2 Hrs -\n" + "  OT3 Hrs -\n" + "  Expenses -\n" + "\n" + "NET PAY AND DISCREPANCIES\n" + "- If there is a Net pay or Net Pay column, use it only as a cross-check.\n" + "- For each row, the component lines must be based ONLY on the Std, OT and Expenses values in that row.\n" + "- You must NOT change, remove or invent any component to force your totals to match Net pay.\n" + "- If the sum of (amount * rate) for all components does not match the Net pay value, do NOT adjust any hours, rates or expenses to make them match.\n" + "- In case of any discrepancy, always trust the actual Std, OT and Expenses columns and ignore the Net pay value for calculation.\n" + "- Never output a line that represents Net Pay or Total Pay.\n" + "- Ignore Total Pay completely for payroll calculations.\n" + "\n" + "SUMMARY\n" + "- For each valid row:\n" + "  1) Read and clean numeric values from the row.\n" + "  2) Treat zero values as absent components and do not output them.\n" + "  3) If expenses_value is non-zero, output exactly one Expenses line with amount 1 and rate equal to the expenses_value.\n" + "  4) Then output Std Hrs, OT1 Hrs, OT2 Hrs, OT3 Hrs lines for non-zero hours with their matching rates.\n" + "  5) Never invent any hours, rates or expenses, and never change components to force a match to Net pay.\n";
+info "Instructions length (chars): " + instructions.length();
+headers = Map();
+headers.put("Authorization","Bearer " + OPENAI_API_KEY);
+headers.put("Content-Type","application/json");
+// =========================================
+// STEP 4: Call OpenAI (CSV vs PDF)
+// =========================================
+// ---------- CSV FLOW ----------
+if(ext == "csv")
+{
+	info "Branch selected: CSV";
+	info "CSV input length (chars): " + csv_input_text.length();
+	// --- Split into header + data rows using toList (no join/split) ---
+	rows_all = csv_input_text.toList("\n");
+	if(rows_all == null || rows_all.size() == 0)
+	{
+		info "ERROR: Downloaded CSV has no lines.";
+		out.put("status","ERROR");
+		out.put("message","Downloaded CSV has no lines.");
+		info out;
+		return;
+	}
+	header_row = rows_all.get(0);
+	data_rows = List();
+	row_index = 0;
+	for each  r_all in rows_all
+	{
+		if(row_index > 0)
+		{
+			data_rows.add(r_all);
+		}
+		row_index = row_index + 1;
+	}
+	if(data_rows.size() == 0)
+	{
+		info "ERROR: CSV has only a header row and no data rows.";
+		out.put("status","ERROR");
+		out.put("message","Downloaded CSV has only a header row and no data rows.");
+		info out;
+		return;
+	}
+	// --- Line-based chunking (header + up to N data rows per chunk) ---
+	CHUNK_MAX_LINES = 10;
+	// e.g. 80 data rows per chunk
+	chunk_texts = List();
+	current_chunk = "";
+	current_line_count = 0;
+	for each  drow in data_rows
+	{
+		if(current_chunk == "")
+		{
+			// start a new chunk with header + first data row
+			current_chunk = header_row + "\n" + drow;
+			current_line_count = 1;
+		}
+		else
+		{
+			if(current_line_count >= CHUNK_MAX_LINES)
+			{
+				// close current chunk and start a new one
+				chunk_texts.add(current_chunk);
+				current_chunk = header_row + "\n" + drow;
+				current_line_count = 1;
+			}
+			else
+			{
+				// append data row to current chunk
+				current_chunk = current_chunk + "\n" + drow;
+				current_line_count = current_line_count + 1;
+			}
+		}
+	}
+	if(current_chunk != "")
+	{
+		chunk_texts.add(current_chunk);
+	}
+	num_chunks = chunk_texts.size();
+	info "CSV will be processed in " + num_chunks + " chunk(s) with max " + CHUNK_MAX_LINES + " data rows each.";
+	// --- Call OpenAI for each chunk and merge results ---
+	merged_output = "";
+	chunk_index = 0;
+	for each  csv_chunk_text in chunk_texts
+	{
+		chunk_index = chunk_index + 1;
+		info "Processing CSV chunk " + chunk_index + " / " + num_chunks + " (chars=" + csv_chunk_text.length() + ").";
+		part_text = Map();
+		part_text.put("type","input_text");
+		part_text.put("text",instructions);
+		part_csv = Map();
+		part_csv.put("type","input_text");
+		part_csv.put("text",csv_chunk_text);
+		content_list = List();
+		content_list.add(part_text);
+		content_list.add(part_csv);
+		user_msg = Map();
+		user_msg.put("role","user");
+		user_msg.put("content",content_list);
+		input_items = List();
+		input_items.add(user_msg);
+		body_map = Map();
+		body_map.put("model",MODEL);
+		body_map.put("input",input_items);
+		//body_map.put("temperature",0);
+		info "About to call OpenAI Responses API for CSV chunk " + chunk_index + "...";
+		resp_csv = null;
+		try 
+		{
+			resp_csv = invokeurl
+			[
+				url :"https://api.openai.com/v1/responses"
+				type :POST
+				body:body_map.toString()
+				headers:headers
+			];
+			info "Responses API call complete for CSV chunk " + chunk_index + ".";
+		}
+		catch (e_resp_csv)
+		{
+			info "Responses API exception for CSV chunk " + chunk_index + ": " + e_resp_csv;
+			out.put("status","ERROR");
+			out.put("message","Responses API exception (CSV chunk " + chunk_index + "): " + e_resp_csv);
+			info out;
+			return;
+		}
+		if(resp_csv == null)
+		{
+			info "ERROR: Empty response from OpenAI for CSV chunk " + chunk_index + ".";
+			out.put("status","ERROR");
+			out.put("message","Empty response from OpenAI for CSV chunk " + chunk_index + ".");
+			info out;
+			return;
+		}
+		resp_text_csv = resp_csv.toString();
+		if(resp_text_csv.length() > 500)
+		{
+			info "Responses API raw (CSV chunk " + chunk_index + ", first 500 chars): " + resp_text_csv.substring(0,500);
+		}
+		else
+		{
+			info "Responses API raw (CSV chunk " + chunk_index + ", full): " + resp_text_csv;
+		}
+		// --- Parse OpenAI response for this chunk ---
+		chunk_output_single = "";
+		try 
+		{
+			rm_csv = resp_text_csv.toMap();
+			// error object
+			if(rm_csv != null && rm_csv.containsKey("error") && rm_csv.get("error") != null)
+			{
+				err_obj_c = rm_csv.get("error");
+				err_msg_c = "";
+				err_type_c = "";
+				err_code_c = "";
+				if(err_obj_c != null)
+				{
+					if(err_obj_c.containsKey("message") && err_obj_c.get("message") != null)
+					{
+						err_msg_c = err_obj_c.get("message").toString();
+					}
+					if(err_obj_c.containsKey("type") && err_obj_c.get("type") != null)
+					{
+						err_type_c = err_obj_c.get("type").toString();
+					}
+					if(err_obj_c.containsKey("code") && err_obj_c.get("code") != null)
+					{
+						err_code_c = err_obj_c.get("code").toString();
+					}
+				}
+				full_err_c = err_msg_c;
+				if(err_type_c != "")
+				{
+					full_err_c = full_err_c + " (type: " + err_type_c + ")";
+				}
+				if(err_code_c != "")
+				{
+					full_err_c = full_err_c + " [code: " + err_code_c + "]";
+				}
+				if(full_err_c == "" || full_err_c == null)
+				{
+					full_err_c = resp_text_csv;
+				}
+				info "OpenAI error detected for CSV chunk " + chunk_index + ": " + full_err_c;
+				out.put("status","ERROR");
+				out.put("message","OpenAI API error (CSV chunk " + chunk_index + "): " + full_err_c);
+				info out;
+				return;
+			}
+			// legacy output_text
+			if(rm_csv != null && rm_csv.containsKey("output_text") && rm_csv.get("output_text") != null)
+			{
+				chunk_output_single = rm_csv.get("output_text").toString();
+				info "Using rm_csv.output_text as chunk_output for chunk " + chunk_index + ".";
+			}
+			// new format: output[].content[].text
+			if((chunk_output_single == "" || chunk_output_single == null) && rm_csv != null && rm_csv.containsKey("output"))
+			{
+				out_list = rm_csv.get("output");
+				info "Attempting to read text from rm_csv.output[].content[].text for chunk " + chunk_index + ".";
+				if(out_list != null)
+				{
+					for each  out_item in out_list
+					{
+						if(out_item != null && out_item.containsKey("content"))
+						{
+							cont_list = out_item.get("content");
+							if(cont_list != null)
+							{
+								for each  c in cont_list
+								{
+									if(c != null && c.containsKey("text") && c.get("text") != null)
+									{
+										chunk_output_single = c.get("text").toString();
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		catch (eparse_csv)
+		{
+			info "Parse note (CSV response, chunk " + chunk_index + "): " + eparse_csv;
+		}
+		if(chunk_output_single == null)
+		{
+			chunk_output_single = "";
+		}
+		chunk_output_single = chunk_output_single.trim();
+		// strip ``` fences if present
+		if(chunk_output_single.startsWith("```"))
+		{
+			if(chunk_output_single.length() > 3)
+			{
+				chunk_output_single = chunk_output_single.substring(3);
+			}
+			if(chunk_output_single.startsWith("\n"))
+			{
+				chunk_output_single = chunk_output_single.substring(1);
+			}
+		}
+		last_fence = chunk_output_single.lastIndexOf("```");
+		if(last_fence != -1)
+		{
+			chunk_output_single = chunk_output_single.substring(0,last_fence);
+		}
+		chunk_output_single = chunk_output_single.trim();
+		// Remove leading 'csv' line if present
+		csv_lines_tmp = chunk_output_single.toList("\n");
+		if(csv_lines_tmp != null && csv_lines_tmp.size() > 0)
+		{
+			first_line_tmp = csv_lines_tmp.get(0);
+			if(first_line_tmp != null && first_line_tmp.toLowerCase().trim() == "csv")
+			{
+				info "Removing leading 'csv' line from chunk " + chunk_index + ".";
+				rebuilt = "";
+				idx_ls = 0;
+				for each  ln_tmp in csv_lines_tmp
+				{
+					if(idx_ls > 0)
+					{
+						if(rebuilt == "")
+						{
+							rebuilt = ln_tmp;
+						}
+						else
+						{
+							rebuilt = rebuilt + "\n" + ln_tmp;
+						}
+					}
+					idx_ls = idx_ls + 1;
+				}
+				chunk_output_single = rebuilt.trim();
+			}
+		}
+		info "chunk_output (chunk " + chunk_index + ") after fence/CSV strip, length=" + chunk_output_single.length();
+		if(chunk_output_single.length() > 400)
+		{
+			info "chunk_output preview (chunk " + chunk_index + ", first up to 400 chars): " + chunk_output_single.substring(0,400);
+		}
+		else
+		{
+			info "chunk_output preview (chunk " + chunk_index + ", full): " + chunk_output_single;
+		}
+		// If empty, just skip this chunk (may contain only header/summary rows)
+		if(chunk_output_single == "")
+		{
+			info "Note: OpenAI returned empty CSV data for chunk " + chunk_index + ". Raw: " + resp_text_csv;
+		}
+		else
+		{
+			if(chunk_output_single.startsWith("ERROR:"))
+			{
+				info "OpenAI returned explicit ERROR line for CSV chunk " + chunk_index + ": " + chunk_output_single;
+				out.put("status","ERROR");
+				out.put("message",chunk_output_single);
+				info out;
+				return;
+			}
+			// Append this chunk's rows (no header expected from model)
+			if(merged_output == "")
+			{
+				merged_output = chunk_output_single;
+			}
+			else
+			{
+				merged_output = merged_output + "\n" + chunk_output_single;
+			}
+		}
+	}
+	// end for each chunk
+	// Prepend standard header row to merged output
+	export_header = "employeeid,firstname,surname,description,amount,rate,weekending,unit";
+	if(merged_output == "")
+	{
+		chunk_output = export_header;
+	}
+	else
+	{
+		chunk_output = export_header + "\n" + merged_output;
+	}
+	// Filter out rows where amount or rate is 0 before writing final output
+	clean_lines = List();
+	for each  row_line in merged_output.toList("\n")
+	{
+		cols = row_line.toList(",");
+		if(cols.size() == 8)
+		{
+			amt = ifnull(cols.get(4),"").trim();
+			rt = ifnull(cols.get(5),"").trim();
+			if(amt != "0" && rt != "0" && amt != "" && rt != "")
+			{
+				clean_lines.add(row_line);
+			}
+		}
+	}
+	chunk_output = export_header;
+	for each  line in clean_lines
+	{
+		chunk_output = chunk_output + "\n" + line;
+	}
+	info "All CSV chunks processed and merged. Final CSV length: " + chunk_output.length();
+	// ===== Save CSV file and upload to WorkDrive =====
+	csv_name2 = file_name;
+	ln2 = csv_name2.toLowerCase();
+	if(ln2.endsWith(".pdf"))
+	{
+		csv_name2 = csv_name2.substring(0,csv_name2.length() - 4) + ".csv";
+	}
+	else if(ln2.endsWith(".xlsx"))
+	{
+		csv_name2 = csv_name2.substring(0,csv_name2.length() - 5) + ".csv";
+	}
+	else if(ln2.endsWith(".xls"))
+	{
+		csv_name2 = csv_name2.substring(0,csv_name2.length() - 4) + ".csv";
+	}
+	else if(ln2.endsWith(".csv") == false)
+	{
+		csv_name2 = csv_name2 + ".csv";
+	}
+	info "Writing CSV to file (CSV input): " + csv_name2;
+	csv_file_final = chunk_output.toFile(csv_name2);
+	uploaded_file_id = "";
+	uploaded_file_name = "";
+	if(csv_file_final != null)
+	{
+		info "Uploading CSV to WorkDrive folder: " + TARGET_WORKDRIVE_FOLDER_ID;
+		wd_upload_resp = null;
+		try 
+		{
+			wd_upload_resp = zoho.workdrive.uploadFile(csv_file_final,TARGET_WORKDRIVE_FOLDER_ID,csv_name2,true,"zoho_drive");
+			info "WorkDrive upload response (CSV): " + wd_upload_resp;
+			if(wd_upload_resp != null && wd_upload_resp.containsKey("data"))
+			{
+				up_d = wd_upload_resp.get("data");
+				if(up_d != null)
+				{
+					if(up_d.containsKey("id") && up_d.get("id") != null)
+					{
+						uploaded_file_id = up_d.get("id").toString();
+					}
+					if(up_d.containsKey("attributes"))
+					{
+						up_a = up_d.get("attributes");
+						if(up_a != null && up_a.containsKey("name") && up_a.get("name") != null)
+						{
+							uploaded_file_name = up_a.get("name").toString();
+						}
+					}
+				}
+			}
+		}
+		catch (e_up_csv)
+		{
+			info "WorkDrive upload exception (CSV): " + e_up_csv;
+		}
+	}
+	info "OpenAI CSV transformation completed successfully; returning CSV.";
+	out.put("status","SUCCESS");
+	out.put("message","CSV created successfully.");
+	out.put("csv_text",chunk_output);
+	out.put("csv_file",csv_file_final);
+	if(uploaded_file_id != "")
+	{
+		out.put("uploaded_file_id",uploaded_file_id);
+	}
+	if(uploaded_file_name != "")
+	{
+		out.put("uploaded_file_name",uploaded_file_name);
+	}
+	// === NEW: expose file_name + file_content for API / Flow ===
+	out.put("file_name",csv_name2);
+	out.put("file_content",chunk_output);
+	info out;
+	return;
+}
+// ---------- PDF FLOW ----------
+if(ext == "pdf")
+{
+	info "Branch selected: PDF";
+	part_text2 = Map();
+	part_text2.put("type","input_text");
+	part_text2.put("text",instructions);
+	part_file = Map();
+	part_file.put("type","input_file");
+	b64_clean = b64.replaceAll("\r","").replaceAll("\n","");
+	part_file.put("filename",file_name);
+	part_file.put("file_data","data:" + ct + ";base64," + b64_clean);
+	info "Using PDF file_data (base64) for OpenAI.";
+	content_list2 = List();
+	content_list2.add(part_text2);
+	content_list2.add(part_file);
+	user_msg2 = Map();
+	user_msg2.put("role","user");
+	user_msg2.put("content",content_list2);
+	input_items2 = List();
+	input_items2.add(user_msg2);
+	body_map2 = Map();
+	body_map2.put("model",MODEL);
+	body_map2.put("input",input_items2);
+	body_map2.put("temperature",0);
+	info "Calling OpenAI Responses API (PDF)...";
+	resp2 = null;
+	try 
+	{
+		resp2 = invokeurl
+		[
+			url :"https://api.openai.com/v1/responses"
+			type :POST
+			body:body_map2.toString()
+			headers:headers
+		];
+		info "Responses API call complete.";
+	}
+	catch (e_resp2)
+	{
+		info "Responses API exception (PDF): " + e_resp2;
+		out.put("status","ERROR");
+		out.put("message","Responses API exception: " + e_resp2);
+		info out;
+		return;
+	}
+	if(resp2 == null)
+	{
+		info "ERROR: Empty response from OpenAI (PDF).";
+		out.put("status","ERROR");
+		out.put("message","Empty response from OpenAI.");
+		info out;
+		return;
+	}
+	resp_text2 = resp2.toString();
+	if(resp_text2.length() > 500)
+	{
+		info "Responses API raw (PDF, first 500 chars): " + resp_text2.substring(0,500);
+	}
+	else
+	{
+		info "Responses API raw (PDF, full): " + resp_text2;
+	}
+	got_text2 = "";
+	try 
+	{
+		rm2 = resp_text2.toMap();
+		if(rm2 != null && rm2.containsKey("error") && rm2.get("error") != null)
+		{
+			err_obj2 = rm2.get("error");
+			err_msg2 = "";
+			err_type2 = "";
+			err_code2 = "";
+			if(err_obj2 != null)
+			{
+				if(err_obj2.containsKey("message") && err_obj2.get("message") != null)
+				{
+					err_msg2 = err_obj2.get("message").toString();
+				}
+				if(err_obj2.containsKey("type") && err_obj2.get("type") != null)
+				{
+					err_type2 = err_obj2.get("type").toString();
+				}
+				if(err_obj2.containsKey("code") && err_obj2.get("code") != null)
+				{
+					err_code2 = err_obj2.get("code").toString();
+				}
+			}
+			full_err2 = err_msg2;
+			if(err_type2 != "")
+			{
+				full_err2 = full_err2 + " (type: " + err_type2 + ")";
+			}
+			if(err_code2 != "")
+			{
+				full_err2 = full_err2 + " [code: " + err_code2 + "]";
+			}
+			if(full_err2 == "" || full_err2 == null)
+			{
+				full_err2 = resp_text2;
+			}
+			info "OpenAI error detected (PDF): " + full_err2;
+			out.put("status","ERROR");
+			out.put("message","OpenAI API error: " + full_err2);
+			info out;
+			return;
+		}
+		if(rm2 != null && rm2.containsKey("output_text") && rm2.get("output_text") != null)
+		{
+			got_text2 = rm2.get("output_text").toString();
+			info "Using rm2.output_text for PDF.";
+		}
+		if((got_text2 == "" || got_text2 == null) && rm2 != null && rm2.containsKey("output"))
+		{
+			out_list2 = rm2.get("output");
+			info "Attempting to read text from rm2.output[].content[].text (PDF).";
+			if(out_list2 != null)
+			{
+				for each  out_item2 in out_list2
+				{
+					if(out_item2 != null && out_item2.containsKey("content"))
+					{
+						cont_list2 = out_item2.get("content");
+						if(cont_list2 != null)
+						{
+							for each  c2 in cont_list2
+							{
+								if(c2 != null && c2.containsKey("text") && c2.get("text") != null)
+								{
+									got_text2 = c2.get("text").toString();
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	catch (eparse2_main)
+	{
+		info "Parse note (PDF response): " + eparse2_main;
+	}
+	if(got_text2 == null)
+	{
+		got_text2 = "";
+	}
+	clean2 = got_text2.trim();
+	if(clean2.startsWith("```"))
+	{
+		if(clean2.length() > 3)
+		{
+			clean2 = clean2.substring(3);
+		}
+		if(clean2.startsWith("\n"))
+		{
+			clean2 = clean2.substring(1);
+		}
+	}
+	last_fence2 = clean2.lastIndexOf("```");
+	if(last_fence2 != -1)
+	{
+		clean2 = clean2.substring(0,last_fence2);
+	}
+	clean2 = clean2.trim();
+	info "PDF clean output length: " + clean2.length();
+	if(clean2.length() > 400)
+	{
+		info "PDF clean output preview (first up to 400 chars): " + clean2.substring(0,400);
+	}
+	else
+	{
+		info "PDF clean output preview (full): " + clean2;
+	}
+	if(clean2 == "")
+	{
+		info "ERROR: OpenAI returned no output_text/text for PDF.";
+		out.put("status","ERROR");
+		out.put("message","OpenAI did not return any CSV data for PDF. Raw response logged.");
+		info out;
+		return;
+	}
+	if(clean2.startsWith("ERROR:"))
+	{
+		info "OpenAI returned explicit ERROR line for PDF: " + clean2;
+		out.put("status","ERROR");
+		out.put("message",clean2);
+		info out;
+		return;
+	}
+	// ===== Save CSV file and upload to WorkDrive (PDF → CSV) =====
+	csv_name3 = file_name;
+	ln3 = csv_name3.toLowerCase();
+	if(ln3.endsWith(".pdf"))
+	{
+		csv_name3 = csv_name3.substring(0,csv_name3.length() - 4) + ".csv";
+	}
+	else if(ln3.endsWith(".xlsx"))
+	{
+		csv_name3 = csv_name3.substring(0,csv_name3.length() - 5) + ".csv";
+	}
+	else if(ln3.endsWith(".xls"))
+	{
+		csv_name3 = csv_name3.substring(0,csv_name3.length() - 4) + ".csv";
+	}
+	else if(ln3.endsWith(".csv") == false)
+	{
+		csv_name3 = csv_name3 + ".csv";
+	}
+	info "Writing CSV to file (PDF input): " + csv_name3;
+	csv_file2 = clean2.toFile(csv_name3);
+	uploaded_file_id2 = "";
+	uploaded_file_name2 = "";
+	if(csv_file2 != null)
+	{
+		info "Uploading CSV (from PDF) to WorkDrive folder: " + TARGET_WORKDRIVE_FOLDER_ID;
+		wd_upload_resp2 = null;
+		try 
+		{
+			wd_upload_resp2 = zoho.workdrive.uploadFile(csv_file2,TARGET_WORKDRIVE_FOLDER_ID,csv_name3,true,"zoho_drive");
+			info "WorkDrive upload response (PDF→CSV): " + wd_upload_resp2;
+			if(wd_upload_resp2 != null && wd_upload_resp2.containsKey("data"))
+			{
+				up_d2 = wd_upload_resp2.get("data");
+				if(up_d2 != null)
+				{
+					if(up_d2.containsKey("id") && up_d2.get("id") != null)
+					{
+						uploaded_file_id2 = up_d2.get("id").toString();
+					}
+					if(up_d2.containsKey("attributes"))
+					{
+						up_a2 = up_d2.get("attributes");
+						if(up_a2 != null && up_a2.containsKey("name") && up_a2.get("name") != null)
+						{
+							uploaded_file_name2 = up_a2.get("name").toString();
+						}
+					}
+				}
+			}
+		}
+		catch (e_up_pdf)
+		{
+			info "WorkDrive upload exception (PDF→CSV): " + e_up_pdf;
+		}
+	}
+	info "OpenAI PDF transformation completed successfully; returning CSV.";
+	out.put("status","SUCCESS");
+	out.put("message","CSV created successfully.");
+	out.put("csv_text",clean2);
+	out.put("csv_file",csv_file2);
+	if(uploaded_file_id2 != "")
+	{
+		out.put("uploaded_file_id",uploaded_file_id2);
+	}
+	if(uploaded_file_name2 != "")
+	{
+		out.put("uploaded_file_name",uploaded_file_name2);
+	}
+	// === NEW: expose file_name + file_content for API / Flow ===
+	out.put("file_name",csv_name3);
+	out.put("file_content",clean2);
+	info out;
+	return;
+}
+// Fallback catch-all
+out.put("status","ERROR");
+out.put("message","Unhandled file type or branch.");
+info out;
+return;
+}
