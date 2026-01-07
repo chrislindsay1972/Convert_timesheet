@@ -1,0 +1,35 @@
+employeeid,firstname,surname,description,amount,rate,weekending,unit,
+CAN-543853,William,Allamby,Std Hrs - Barratt Homes (YW) - Skilled Worker,7,16.25,04/01/2026,hours,113.75
+CAN-484805,Julian,Bamber,Std Hrs - Genesis Homes - Bowland Fold - Telehandler,18,20.5,28/12/2025,hours,369
+CAN-539388,Luke,Beresford,Std Hrs - McAvoy Group Ltd - Alfreton - Labourer,14,16.5,04/01/2026,hours,231
+CAN-539388,Luke,Beresford,Std Hrs - McAvoy Group Ltd - Alfreton - Labourer,6,16.5,28/12/2025,hours,99
+CAN-536408,Daniel,Berhane,Std Hrs - Miller Homes (NW) - Rookery Place - Skilled Worker,8,16.45,28/12/2025,hours,131.6
+CAN-426997,Peter,Brown,Std Hrs - Anwyl Homes Lancashire - Eagles Green - Telehandler,9,19,04/01/2026,hours,171
+CAN-532413,Ben,Christie,Std Hrs - Morris Homes - Waters Edge - Skilled Worker,8.5,16.25,28/12/2025,hours,138.125
+CAN-543030,Thomas,Dransfield,Std Hrs - Harron Homes - Nevison's Fold - Skilled Worker,7.5,16.25,04/01/2026,hours,121.875
+CAN-517175,Artur,Gorskij,Expenses - Harron Homes - Castle Gardens,1,260,28/12/2025,expense,260
+CAN-517175,Artur,Gorskij,Std Hrs - Harron Homes - Castle Gardens,16,16.25,28/12/2025,hours,260
+CAN-539767,Fisseha,Hanefom,Std Hrs - Domis Construction - Waterhouse Gardens (Brewery),10.5,15.5,28/12/2025,hours,162.75
+CAN-546052,Thomas,Huyton,Std Hrs - Castle Green Homes - Orchard Place,8,15.88,04/01/2026,hours,127.04
+CAN-498397,Ross,Kenyon,Std Hrs - Tilia Homes (NW) - Alston Grange,17,16.25,28/12/2025,hours,276.25
+CAN-428359,Ivomir,Kirchev,Std Hrs - Wain Homes - High Hill View,8,15.88,21/12/2025,hours,127.04
+CAN-535173,Saka,Makanda,Std Hrs - Domis Construction - Traffic Marshall,26,15,04/01/2026,hours,390
+CAN-534408,John,Mernagh,Std Hrs - Barratt Homes - Skilled Worker,-16,16.25,28/12/2025,hours,-260
+CAN-534408,John,Mernagh,Std Hrs - Barratt Homes - Skilled Worker,24,16.25,28/12/2025,hours,390
+CAN-494902,Roger Darrell,Mernagh,Std Hrs - Barratt Homes - Gateperson,-18,16.25,28/12/2025,hours,-292.5
+CAN-494902,Roger Darrell,Mernagh,Std Hrs - Barratt Homes - Gateperson,27,16.25,28/12/2025,hours,438.75
+CAN-253205,Darren,Miller,Std Hrs - Sapphire Limited - CIS Site Manager,1,300,04/01/2026,hours,300
+CAN-253205,Darren,Miller,OT1 Hrs - Sapphire Limited - CIS Site Manager,1,450,04/01/2026,hours,450
+CAN-534505,Chris,Mills,Std Hrs - Sapphire Limited - CIS Telehandler,9,19,04/01/2026,hours,171
+CAN-13768,Gary,Minshull,Std Hrs - Sapphire Limited - CIS Multi Trade Operative,57,19.5,21/12/2025,hours,1111.5
+CAN-13768,Gary,Minshull,Std Hrs - Sapphire Limited - CIS Multi Trade Operative,-39,19.5,21/12/2025,hours,-760.5
+CAN-542911,Daniel,Ojo,Std Hrs - Sapphire Limited - CIS Skilled Worker,8,16.25,04/01/2026,hours,130
+CAN-545719,Laimis,Pamakstys,Std Hrs - Sapphire Limited - CIS Skilled Worker,8,16.25,28/12/2025,hours,130
+CAN-489429,Andis,Riemers,Std Hrs - Sapphire Limited - CIS Telehandler,9,19.5,04/01/2026,hours,175.5
+CAN-364429,Stephen,Roberts,Expenses - Sapphire Limited - CIS Contracts Manager,1,37.5,28/12/2025,expense,37.5
+CAN-364429,Stephen,Roberts,Std Hrs - Sapphire Limited - CIS Contracts Manager,3,320,28/12/2025,hours,960
+CAN-528163,Ousainou,Sawaneh,Std Hrs - Redrow Homes - (Datum RPO ) Kingsley Manor - Banksman,25.5,17,21/12/2025,hours,433.5
+CAN-530639,Anthony,Shaw,Std Hrs - Wain Homes - Kingsley Manor - Telehandler,13,18,04/01/2026,hours,234
+CAN-502667,David,Shepley,Std Hrs - Alliance Construction Group - MRI - Site Manager,3,287.5,28/12/2025,hours,862.5
+CAN-345380,David,Singh,Std Hrs - Castle Green Homes - Viking Way B2 - Telehandler,8,19.5,04/01/2026,hours,156
+CAN-543495,Samuel,Teklebirahn,Std Hrs - Churchill Living- Warrington - Skilled Labourer,16,16.25,28/12/2025,hours,260
