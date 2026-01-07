@@ -1,0 +1,38 @@
+employeeid,firstname,surname,description,amount,rate,weekending,unit
+CAN-543853,William,Allamby,Std Hrs - Barratt Homes (YW) - Skilled Worker,7.0,16.25,2026-01-04,hours
+CAN-484805,Julian,Bamber,Std Hrs - Genesis Homes - Bowland Fold - Telehandler,18.0,20.5,2025-12-28,hours
+CAN-539388,Luke,Beresford,Std Hrs - McAvoy Group Ltd - Alfreton - Labourer,14.0,16.5,2026-01-04,hours
+CAN-539388,Luke,Beresford,Std Hrs - McAvoy Group Ltd - Alfreton - Labourer,6.0,16.5,2025-12-28,hours
+CAN-536408,Daniel,Berhane,Std Hrs - Miller Homes (NW) - Rookery Place - Skilled Worker,8.0,16.45,2025-12-28,hours
+CAN-426997,Peter,Brown,Std Hrs - Anwyl Homes Lancashire - Eagles Green - Telehandler,9.0,19.0,2026-01-04,hours
+CAN-532413,Ben,Christie,Std Hrs - Morris Homes - Waters Edge - Skilled Worker,8.5,16.25,2025-12-28,hours
+CAN-543030,Thomas,Dransfield,Std Hrs - Harron Homes - Nevison's Fold - Skilled Worker,7.5,16.25,2026-01-04,hours
+CAN-517175,Artur,Gorskij,Expenses - Harron Homes - Castle Gardens,1,260,2025-12-28,expense
+CAN-517175,Artur,Gorskij,Std Hrs - Harron Homes - Castle Gardens,16,16.25,2025-12-28,hours
+CAN-539767,Fisseha,Hanefom,Expenses - Domis Construction - Waterhouse Gardens (Brewery),1,162.75,2025-12-28,expense
+CAN-539767,Fisseha,Hanefom,Std Hrs - Domis Construction - Waterhouse Gardens (Brewery),10.5,15.5,2025-12-28,hours
+CAN-546052,Thomas,Huyton,Expenses - Castle Green Homes - Orchard Place,1,127.04,2026-01-04,expense
+CAN-546052,Thomas,Huyton,Std Hrs - Castle Green Homes - Orchard Place,8,15.88,2026-01-04,hours
+CAN-498397,Ross,Kenyon,Expenses - Tilia Homes - Alston Grange,1,276.25,2025-12-28,expense
+CAN-498397,Ross,Kenyon,Std Hrs - Tilia Homes - Alston Grange,17,16.25,2025-12-28,hours
+CAN-428359,Ivomir,Kirchev,Std Hrs - Wain Homes - High Hill View,8,15.88,2025-12-21,hours
+CAN-535173,Saka,Makanda,Std Hrs - Domis Construction - Traffic Marshall,26,15,2026-01-04,hours
+CAN-534408,John,Mernagh,Std Hrs - Barratt Homes (YW) - Skilled Worker,-16,16.25,2025-12-28,hours
+CAN-534408,John,Mernagh,Std Hrs - Barratt Homes (YW) - Skilled Worker,24,16.25,2025-12-28,hours
+CAN-494902,Roger Darrell,Mernagh,Std Hrs - Barratt Homes (YW) - Gateperson,-18,16.25,2025-12-28,hours
+CAN-494902,Roger Darrell,Mernagh,Std Hrs - Barratt Homes (YW) - Gateperson,27,16.25,2025-12-28,hours
+CAN-253205,Darren,Miller,Std Hrs - Sapphire Limited - BW Interiors - The Spine Building,1,300,2026-01-04,hours  
+CAN-253205,Darren,Miller,OT1 Hrs - Sapphire Limited - BW Interiors - The Spine Building,1,450,2026-01-04,hours  
+CAN-534505,Chris,Mills,Std Hrs - Sapphire Limited - Eccleston Homes - Brook House Place,9,19,2026-01-04,hours  
+CAN-13768,Gary,Minshull,Std Hrs - Sapphire Limited - Gleeson Developments Limited (NW) - Bracewell Gardens,57,19.5,2025-12-21,hours  
+CAN-13768,Gary,Minshull,Std Hrs - Sapphire Limited - Gleeson Developments Limited (NW) - Bracewell Gardens,-39,19.5,2025-12-21,hours  
+CAN-542911,Daniel,Ojo,Std Hrs - Sapphire Limited - Jones Homes - Century View,8,16.25,2026-01-04,hours  
+CAN-545719,Laimis,Pamakstys,Std Hrs - Sapphire Limited - Avant Homes - Seely Fields,8,16.25,2025-12-28,hours  
+CAN-489429,Andis,Riemers,Std Hrs - Sapphire Limited - Anwyl Homes Lancashire - Whittle Brook Park,9,19.5,2026-01-04,hours  
+CAN-364429,Stephen,Roberts,Expenses - Sapphire Limited - Walter Carefoot PLC - HO,1,37.5,2025-12-28,expense  
+CAN-364429,Stephen,Roberts,Std Hrs - Sapphire Limited - Walter Carefoot PLC - HO,3,320,2025-12-28,hours
+CAN-528163,Ousainou,Sawaneh,Std Hrs - Redrow Homes - Banksman,25.5,17,2025-12-21,hours
+CAN-530639,Anthony,Shaw,Std Hrs - Wain Homes - Telehandler,13,18,2026-01-04,hours
+CAN-502667,David,Shepley,Std Hrs - Alliance Construction Group - Site Manager,3,287.5,2025-12-28,hours
+CAN-345380,David,Singh,Std Hrs - Castle Green Homes - Telehandler,8,19.5,2026-01-04,hours
+CAN-543495,Samuel,Teklebirahn,Std Hrs - Churchill Living- Skilled Labourer,16,16.25,2025-12-28,hours
